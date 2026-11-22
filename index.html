@@ -4,19 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143c30">
-<title>TOEIC L&R Part 5 練習帳</title>
+<title>TOEIC L&R 練習帳</title>
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="questions.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
 <header><div class="wrap brand"><span class="mark" aria-hidden="true">T</span> TOEIC L&R 練習帳</div></header>
 <main class="wrap">
   <section class="hero">
-    <p class="kicker">READING / PART 5</p>
-    <h1>文法・語彙トレーニング</h1>
-    <p>短文穴埋めのオリジナル問題。答え合わせで、英文を読み解くコツをつかもう。</p>
+    <p class="kicker">LISTENING &amp; READING</p>
+    <h1>Part別トレーニング</h1>
+    <p>練習したいPartを選んで、オリジナル問題に挑戦しよう。</p>
   </section>
   <section class="stats" aria-label="累計の学習記録">
     <div>回答数<strong id="attempts">0</strong></div>
@@ -24,12 +25,9 @@
     <div>要復習<strong id="due">0</strong></div>
   </section>
   <section class="card" id="session" aria-labelledby="session-title">
-    <h2 id="session-title" tabindex="-1">練習を始める</h2>
-    <p>10問をランダム順で出題します。</p>
-    <div class="actions">
-      <button id="start" class="primary">10問に挑戦</button>
-      <button id="review">間違えた問題を復習</button>
-    </div>
+    <h2 id="session-title" tabindex="-1">練習するPartを選ぶ</h2>
+    <div id="parts"></div>
+    <div class="actions"><button id="review">すべてのPartの間違いを復習</button></div>
     <p id="message" role="status"></p>
   </section>
   <p class="note">非公式の学習アプリ · 学習記録はこのブラウザに保存</p>

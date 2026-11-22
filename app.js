@@ -1,4 +1,4 @@
-const bank = [
+const partFive = [
   ["The marketing team will ___ the campaign results on Friday.", ["present", "presentation", "presented", "presenting"], 0, "助動詞 will の直後には動詞の原形 present（発表する）が入ります。"],
   ["Please submit your expense report ___ the end of the month.", ["among", "by", "during", "since"], 1, "by は期限を表します。by the end of the month は「月末までに」です。"],
   ["The instructions were written ___ so that new employees could follow them.", ["clarity", "clear", "clearly", "clearing"], 2, "written（書かれた）を修飾する副詞 clearly（明確に）が入ります。"],
@@ -14,6 +14,11 @@ const bank = [
   ["Everyone ___ attends the workshop will receive a certificate.", ["who", "whose", "whom", "what"], 0, "関係代名詞 who は人を先行詞とし、ここでは attends の主語になります。"],
   ["The application form is available in ___ English and Japanese.", ["either", "both", "neither", "each"], 1, "both A and B は「AとBの両方」を表します。"],
   ["We had to postpone the delivery ___ a shortage of drivers.", ["even though", "therefore", "due to", "because"], 2, "due to の後ろに名詞句を置き、「運転手の不足のために」と理由を示します。"]
+];
+
+const bank = [
+  ...partFive.map(([prompt, options, answer, explanation]) => ({ part: 5, prompt, options, answer, explanation })),
+  ...extraQuestions
 ];
 
 const session = document.querySelector("#session");
@@ -50,7 +55,26 @@ function shuffle(items) {
 
 function showHome(focus = false) {
   session.innerHTML = home;
-  session.querySelector("#start").onclick = () => play(shuffle(bank.map((_, id) => id)).slice(0, 10), "練習");
+  const partsContainer = session.querySelector("#parts");
+  for (const [heading, numbers] of [["リスニング", [1, 2, 3, 4]], ["リーディング", [5, 6, 7]]]) {
+    const groupHeading = document.createElement("h3");
+    groupHeading.textContent = heading;
+    const group = document.createElement("div");
+    group.className = "part-grid";
+    partsContainer.append(groupHeading, group);
+    for (const number of numbers) {
+      const ids = bank.map((question, id) => question.part === number ? id : -1).filter(id => id >= 0);
+      const count = Math.min(10, ids.length);
+      const button = document.createElement("button");
+      button.className = "part-button";
+      button.textContent = "Part " + number + " " + parts[number - 1].name;
+      const detail = document.createElement("small");
+      detail.textContent = count + "問";
+      button.append(detail);
+      button.onclick = () => play(number === 5 ? shuffle(ids).slice(0, count) : ids, "練習");
+      group.append(button);
+    }
+  }
   session.querySelector("#review").onclick = () => {
     if (historyData.missed.length) {
       play(shuffle(historyData.missed), "復習");
@@ -67,25 +91,54 @@ function play(ids, mode) {
 
   function showQuestion() {
     const id = ids[index];
-    const [prompt, options, answer, explanation] = bank[id];
+    const question = bank[id];
+    const { part, prompt, options, answer, explanation, image, audio, hiddenOptions, passages = [] } = question;
     session.innerHTML = `
-      <p class="progress">${mode} · ${index + 1} / ${ids.length} 問</p>
+      <p class="progress">${mode} · Part ${part} · ${index + 1} / ${ids.length} 問</p>
       <progress aria-label="回答済みの問題数" max="${ids.length}" value="${index}"></progress>
-      <h2 id="session-title" tabindex="-1">空欄に入る語句を選ぶ</h2>
+      <h2 id="session-title" tabindex="-1">${parts[part - 1].instruction}</h2>
+      <div class="material"></div>
       <p class="prompt" lang="en"></p>
       <div class="choices"></div>
       <p class="feedback" role="status"></p>
       <div class="actions"><button class="primary" id="next" hidden>次の問題</button><button id="home">ホームに戻る</button></div>`;
-    session.querySelector(".prompt").textContent = prompt;
+    const promptElement = session.querySelector(".prompt");
+    promptElement.textContent = prompt ?? "";
+    promptElement.hidden = !prompt;
+    const material = session.querySelector(".material");
+    if (image) {
+      const photo = document.createElement("img");
+      photo.src = image;
+      photo.alt = "練習問題の写真";
+      material.append(photo);
+    }
+    for (const passage of passages) {
+      const documentText = document.createElement("p");
+      documentText.className = "passage";
+      documentText.lang = "en";
+      documentText.textContent = passage;
+      material.append(documentText);
+    }
+    let player;
+    if (audio) {
+      player = document.createElement("audio");
+      player.controls = true;
+      player.preload = "metadata";
+      player.src = audio;
+      player.setAttribute("aria-label", "Part " + part + " 問題音声");
+      material.append(player);
+    }
     const choices = session.querySelector(".choices");
     const next = session.querySelector("#next");
     const buttons = [];
     let answered = false;
 
-    for (const optionIndex of shuffle(options.map((_, position) => position))) {
+    const optionIndices = options.map((_, position) => position);
+    const order = hiddenOptions ? optionIndices : shuffle(optionIndices);
+    for (const optionIndex of order) {
       const button = document.createElement("button");
       button.lang = "en";
-      button.textContent = options[optionIndex];
+      button.textContent = hiddenOptions ? "ABCD"[optionIndex] : options[optionIndex];
       button.onclick = () => {
         if (answered) return;
         answered = true;
@@ -105,10 +158,21 @@ function play(ids, mode) {
         }
         refreshStats();
         for (const choice of buttons) choice.disabled = true;
-        buttons.find(choice => choice.textContent === options[answer]).classList.add("correct");
+        buttons[order.indexOf(answer)].classList.add("correct");
         if (!isCorrect) button.classList.add("incorrect");
         const feedback = session.querySelector(".feedback");
         feedback.textContent = (isCorrect ? "正解。" : "不正解。正解は " + options[answer] + "。") + explanation;
+        if (audio) {
+          const transcript = document.createElement("details");
+          const summary = document.createElement("summary");
+          summary.textContent = "音声スクリプトを見る";
+          const script = document.createElement("p");
+          script.lang = "en";
+          script.className = "passage";
+          script.textContent = listeningScript(question);
+          transcript.append(summary, script);
+          feedback.after(transcript);
+        }
         session.querySelector("progress").value = index + 1;
         next.hidden = false;
         next.textContent = index + 1 === ids.length ? "結果を見る" : "次の問題";
@@ -119,6 +183,7 @@ function play(ids, mode) {
     }
 
     next.onclick = () => {
+      player?.pause();
       index += 1;
       if (index < ids.length) {
         showQuestion();
@@ -131,7 +196,10 @@ function play(ids, mode) {
       session.querySelector("#home").onclick = () => showHome(true);
       session.querySelector("h2").focus();
     };
-    session.querySelector("#home").onclick = () => showHome(true);
+    session.querySelector("#home").onclick = () => {
+      player?.pause();
+      showHome(true);
+    };
     session.querySelector("h2").focus();
   }
 
